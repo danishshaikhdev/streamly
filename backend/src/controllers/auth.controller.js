@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import { upsertStreamUser } from "../lib/stream.js";
 import jwt from "jsonwebtoken";
 
 // Signup Route
@@ -7,7 +8,8 @@ import jwt from "jsonwebtoken";
 // 1. Validate Input - any field is missing, password length, email format
 // 2. Check if User Already Exists - by email
 // 3. Create New User - get a random profile picture from https://avatar.iran.liara.run/, create user instance
-// 4. Generate JWT Token and Set Cookie - create JWT token, put token in response cookie, send response
+// 4. create the user in the stream as well - upsert stream user
+// 5. Generate JWT Token and Set Cookie - create JWT token, put token in response cookie, send response
 
 // STATUS CODES TO USE:
 // 409 - Conflict (email already exists)
@@ -65,7 +67,21 @@ export const signup = async (req, res) => {
       profilePicture,
     });
 
-    // STEP 4: Generate JWT Token and Set Cookie
+    // STEP 4: create the user in the stream as well
+
+    try {
+      // upsert stream user
+      await upsertStreamUser({
+        id: newUser._id.toString(),
+        name: newUser.fullName,
+        image: newUser.profilePicture || "",
+      });
+      console.log(`Stream user created for ${newUser.fullName}`);
+    } catch (error) {
+      console.error("Error creating stream user:", error);
+    }
+
+    // STEP 5: Generate JWT Token and Set Cookie
 
     // create a JWT token for the user
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
@@ -164,6 +180,6 @@ export const login = async (req, res) => {
 
 // Logout Route
 export const logout = (req, res) => {
-  res.clearCookie("jwt", );
+  res.clearCookie("jwt");
   res.status(200).json({ message: "Logged out successfully" });
 };
