@@ -96,11 +96,74 @@ export const signup = async (req, res) => {
 };
 
 // Login Route
+
+// LOGIN ROUTE WILL DO THE FOLLOWING STEPS:
+// 1. Validate Input - any field is missing
+// 2. Check if User Exists - by email
+// 3. Check if Password is Correct - using bcryptjs compare method
+// 4. Generate JWT Token and Set Cookie - create JWT token, put token in response cookie, send response
+
+// STATUS CODES TO USE:
+// 200 - OK (successful login)
+// 400 - Bad Request (missing fields)
+// 401 - Unauthorized (invalid credentials)
+// 500 - Internal Server Error (server error)
+
 export const login = async (req, res) => {
-  res.send("Login Route");
+  try {
+    // get email and password from request body
+    const { email, password } = req.body;
+
+    // STEP 1: Validate Input
+
+    // check for missing fields
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    // STEP 2: Check if User Exists
+
+    // find the user by email
+    const user = await User.findOne({ email });
+
+    // if user not found, send error response
+    if (!user)
+      return res.status(401).json({ message: "Invalid email or password." });
+
+    // STEP 3: Check if Password is Correct
+
+    // check if password matches using our custom method in User model
+    const isPasswordCorrect = await user.matchPasswords(password);
+    if (!isPasswordCorrect)
+      return res.status(401).json({ message: "Invalid email or password." });
+
+    // create a JWT token for the user
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // put the token in the response cookie
+    res.cookie("jwt", token, {
+      // 7 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds => 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      httpOnly: true, // prevent XSS attacks
+      sameSite: "strict", // prevent CSRF attacks
+      secure: process.env.NODE_ENV === "production", // set to true in production
+    });
+
+    // send the success response with user object
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.log("Error in Login controller:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
 
 // Logout Route
 export const logout = (req, res) => {
-  res.send("Logout Route");
+  res.clearCookie("jwt", );
+  res.status(200).json({ message: "Logged out successfully" });
 };

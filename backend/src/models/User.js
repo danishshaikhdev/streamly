@@ -72,6 +72,17 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+// static method to compare passwords
+userSchema.methods.matchPasswords = async function (enteredPassword) {
+  // just compare the entered password with the hashed password in the database using bcryptjs compare method
+  console.log(enteredPassword, this.password);
+  const isPasswordCorrect = await bcrypt.compare(
+    enteredPassword,
+    this.password
+  );
+  return isPasswordCorrect;
+};
+
 // User Model
 const User = mongoose.model("User", userSchema);
 
